@@ -78,19 +78,86 @@ const App = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [error, setError] = useState(null);
+
+  const API_KEY = ""; // User can insert key here for live data
+
   useEffect(() => {
-    // Advanced Simulation Entry
-    const timer = setTimeout(() => {
-      setLoading(false);
-      // Generate initial history
-      const initialHistory = Array.from({ length: 15 }, (_, i) => ({
-        time: `${i}:00`,
-        aqi: Math.floor(Math.random() * 2) + 1
-      }));
-      setHistory(initialHistory);
-    }, 2000);
-    return () => clearTimeout(timer);
+    initApp();
   }, []);
+
+  const initApp = async () => {
+    setLoading(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => syncAtmosphere(pos.coords.latitude, pos.coords.longitude, "Local Node"),
+        () => syncAtmosphere(28.6139, 77.2090, "Primary Node (Fallback)")
+      );
+    } else {
+      syncAtmosphere(28.6139, 77.2090, "Primary Node (Fallback)");
+    }
+  };
+
+  const syncAtmosphere = async (lat, lon, label) => {
+    setLoading(true);
+    try {
+      let current;
+      if (API_KEY) {
+        const aqiRes = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
+        const poll = await aqiRes.json();
+
+        const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
+        const weather = await weatherRes.json();
+
+        current = {
+          name: label,
+          aqi: poll.list[0].main.aqi,
+          components: poll.list[0].components,
+          weather: { temp: weather.main.temp, hum: weather.main.humidity, wind: weather.wind.speed },
+          uv: (Math.random() * 5).toFixed(1),
+          vis: (weather.visibility / 1000).toFixed(1),
+          time: new Date().toLocaleTimeString()
+        };
+      } else {
+        // High-Quality Simulation for Demo
+        current = {
+          name: label,
+          aqi: Math.floor(Math.random() * 3) + 1,
+          components: { pm2_5: (Math.random() * 20).toFixed(1), pm10: (Math.random() * 40).toFixed(1), no2: (Math.random() * 10).toFixed(1), co: 250 },
+          weather: { temp: 24, hum: 45, wind: 12 },
+          uv: 2.1,
+          vis: 15.0,
+          time: new Date().toLocaleTimeString()
+        };
+      }
+      setData(current);
+      setHistory(prev => [...prev, { time: current.time, aqi: current.aqi }].slice(-15));
+    } catch (err) {
+      setError("Atmospheric Link Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    if (e.key === 'Enter' && search) {
+      setLoading(true);
+      try {
+        if (!API_KEY) {
+          syncAtmosphere(0, 0, search);
+          return;
+        }
+        const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${search}&limit=1&appid=${API_KEY}`);
+        const geoData = await geoRes.json();
+        if (geoData.length) {
+          syncAtmosphere(geoData[0].lat, geoData[0].lon, geoData[0].name);
+        }
+      } catch (err) {
+        setError("Location Unreachable");
+        setLoading(false);
+      }
+    }
+  };
 
   if (loading) return <LoadingSequence />;
 
@@ -103,7 +170,7 @@ const App = () => {
         <Sidebar />
 
         <main className="main-content">
-          <TopBar search={search} setSearch={setSearch} setIsFocus={setIsFocus} />
+          <TopBar search={search} setSearch={setSearch} handleSearch={handleSearch} setIsFocus={setIsFocus} />
 
           <div className="page-wrapper">
             <AnimatePresence mode="wait">
@@ -253,14 +320,15 @@ const SideLink = ({ to, icon, label }) => (
   </NavLink>
 );
 
-const TopBar = ({ search, setSearch, setIsFocus }) => (
+const TopBar = ({ search, setSearch, handleSearch, setIsFocus }) => (
   <header className="top-bar">
     <div className="search-wrapper glass">
       <Search size={18} className="search-icon" />
       <input
-        placeholder="Search Nodes..."
+        placeholder="Synchronize Location..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={handleSearch}
       />
       <div className="kbd glass">⌘ K</div>
     </div>
