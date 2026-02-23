@@ -1,32 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700\u0026display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
 :root {
   --primary: #00f2fe;
-  --primary-glow: rgba(0, 242, 254, 0.4);
+  --primary-rgb: 0, 242, 254;
   --secondary: #4facfe;
-  --accent: #7c3aed;
-  --bg-dark: #020617;
-  --bg-darker: #010409;
-  --card-bg: rgba(15, 23, 42, 0.4);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(30, 41, 59, 0.5);
+  --accent: #c084fc;
+  --accent-rgb: 192, 132, 252;
+
+  --bg-dark: #030712;
+  --bg-deep: #000000;
+
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.12);
 
   --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-dim: #94a3b8;
+  --text-dark: #64748b;
+
+  --font-main: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   --safe: #10b981;
   --warning: #f59e0b;
-  --danger: #ef4444;
-
-  --font-main: 'Plus Jakarta Sans', sans-serif;
-  --font-heading: 'Space Grotesk', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  background-color: var(--bg-dark);
-  color: var(--text-main);
-  font-family: var(--font-main);
-  -webkit-font-smoothing: antialiased;
+  --danger: #f43f5e;
 }
 
 * {
@@ -36,15 +33,54 @@
 }
 
 body {
+  font-family: var(--font-main);
+  background: var(--bg-deep);
+  color: var(--text-main);
   overflow: hidden;
-  /* App will handle scroll internally */
-  background: var(--bg-dark);
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
+/* Background Effects */
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(var(--primary-rgb), 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(var(--accent-rgb), 0.1) 0%, transparent 40%),
+    var(--bg-dark);
+}
+
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  z-index: -1;
+  mask-image: radial-gradient(circle at center, black, transparent 80%);
+}
+
+/* Premium Utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #fff 0%, var(--primary) 50%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -57,54 +93,27 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-glow);
+  background: var(--primary);
 }
 
-/* Global Selection */
-::selection {
-  background: var(--primary-glow);
-  color: white;
-}
+@keyframes float {
 
-/* Utilities */
-.glass {
-  background: var(--card-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--card-border);
-  border-radius: 24px;
-}
-
-.title-gradient {
-  background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.mono {
-  font-family: var(--font-mono);
-}
-
-.heading {
-  font-family: var(--font-heading);
-}
-
-/* Animation Classes */
-.shimmer {
-  background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.05) 50%,
-      rgba(255, 255, 255, 0) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+  0%,
+  100% {
+    transform: translateY(0);
   }
 
-  100% {
-    background-position: 200% 0;
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
