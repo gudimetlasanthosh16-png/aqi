@@ -1,0 +1,491 @@
+/* --- Quantum Shell Layout --- */
+.app-shell.v4-quantum {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg-darker);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+/* --- Sidebar V4 --- */
+.sidebar {
+  width: 280px;
+  background: rgba(1, 4, 9, 0.95);
+  border-right: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 1.75rem;
+  z-index: 100;
+}
+
+.user-xp-box {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1.25rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  border: 1px solid var(--card-border);
+}
+
+.xp-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+  color: var(--primary);
+}
+
+.xp-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 10px;
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+/* --- Ticker Bar --- */
+.ticker-bar {
+  background: var(--primary-glow);
+  padding: 0.5rem 2.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--primary);
+  border-bottom: 1px solid var(--card-border);
+}
+
+/* --- Dashboard V4 --- */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2rem;
+}
+
+.card.hero {
+  grid-column: span 8;
+  padding: 3rem;
+  border-bottom: 4px solid var(--theme);
+}
+
+.hero .halo {
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  width: 400px;
+  height: 400px;
+  filter: blur(150px);
+  opacity: 0.15;
+}
+
+.hero-content {
+  display: flex;
+  align-items: center;
+  gap: 5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.aqi-ring {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 2px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.02);
+}
+
+.aqi-ring .val {
+  font-size: 8rem;
+  line-height: 1;
+}
+
+.aqi-ring .unit {
+  font-size: 1rem;
+  color: var(--text-dim);
+  font-weight: 800;
+  letter-spacing: 5px;
+}
+
+.quick-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.exposure-meter {
+  margin-top: 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+}
+
+.meter-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 0 20px var(--theme);
+}
+
+.card.ride-stats {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.metric {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+}
+
+.metric .l {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.metric .v {
+  font-size: 1.75rem;
+  display: block;
+}
+
+.metric .u {
+  font-size: 0.7rem;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.card.mini-history {
+  grid-column: span 4;
+  height: 180px;
+  padding: 1.5rem;
+}
+
+.chart-micro {
+  height: 100px;
+  margin-top: 1rem;
+}
+
+/* --- Heatmap --- */
+.map-viz {
+  height: 500px;
+  position: relative;
+  margin-top: 2rem;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.map-placeholder {
+  width: 100%;
+  height: 100%;
+  background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'), var(--bg-darker);
+  position: relative;
+}
+
+.pulse-point {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--safe);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--safe);
+  animation: pulse 2s infinite;
+}
+
+.pulse-point.danger {
+  background: var(--danger);
+  box-shadow: 0 0 20px var(--danger);
+}
+
+.pulse-point.warning {
+  background: var(--warning);
+  box-shadow: 0 0 20px var(--warning);
+}
+
+.text-overlay {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  font-size: 0.7rem;
+  color: var(--primary);
+  letter-spacing: 2px;
+}
+
+/* --- Achieve Screen --- */
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.ach-card {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.5rem;
+  opacity: 0.4;
+  grayscale: 100%;
+}
+
+.ach-card.unlocked {
+  opacity: 1;
+  grayscale: 0;
+  border-color: var(--primary);
+}
+
+.ach-card .icon {
+  color: var(--primary);
+}
+
+.ach-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.ach-progress .fill {
+  height: 100%;
+  background: var(--primary);
+}
+
+/* --- BreatheBot AI --- */
+.breathe-bot {
+  position: fixed;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  z-index: 2000;
+}
+
+.chat-trigger {
+  width: 64px;
+  height: 64px;
+  background: var(--primary);
+  border-radius: 20px;
+  border: none;
+  color: var(--bg-dark);
+  cursor: pointer;
+  box-shadow: 0 10px 30px var(--primary-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: 0.3s;
+}
+
+.chat-trigger:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.notif {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--danger);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-dark);
+}
+
+.chat-window {
+  position: absolute;
+  bottom: 80px;
+  right: 0;
+  width: 350px;
+  height: 480px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  animation: slideUp 0.3s cubic-bezier(0.2, 1, 0.2, 1);
+}
+
+.breathe-bot.open .chat-window {
+  display: flex;
+}
+
+.chat-head {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chat-head span {
+  font-size: 0.7rem;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.chat-head button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.chat-body {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.msg {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  max-width: 85%;
+  line-height: 1.5;
+}
+
+.msg.bot {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+
+.msg.user {
+  background: var(--primary-glow);
+  color: var(--primary);
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-input {
+  padding: 1.25rem;
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.chat-input input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  color: white;
+  flex: 1;
+}
+
+/* --- Focus Mode V4 --- */
+.focus-v4 {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-darker);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.f-content {
+  text-align: center;
+}
+
+.f-content .l {
+  font-size: 1.5rem;
+  color: var(--text-dim);
+  letter-spacing: 15px;
+}
+
+.f-content .big-val {
+  font-size: 28rem;
+  line-height: 1;
+  color: var(--acc);
+  text-shadow: 0 0 100px var(--acc);
+}
+
+.f-content h2 {
+  font-size: 6rem;
+  color: white;
+}
+
+.close-f {
+  position: absolute;
+  top: 4rem;
+  right: 4rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+/* --- Animations --- */
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+
+  100% {
+    opacity: 0.4;
+  }
+}
