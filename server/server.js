@@ -13,6 +13,18 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// --- Simple In-Memory Cache ---
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const cache = {
+    sync: new Map(),
+    snapshots: {
+        data: null,
+        timestamp: 0
+    }
+};
+
+const getCacheKey = (lat, lon) => `${Math.round(lat * 100) / 100}_${Math.round(lon * 100) / 100}`;
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/airsense';
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('✅ Connected to MongoDB'))
@@ -35,6 +47,14 @@ app.post('/api/aqi/sync', async (req, res) => {
     const API_KEY = process.env.OPENWEATHER_API_KEY;
 
     if (!lat || !lon) return res.status(400).json({ error: 'Lat/Lon required' });
+
+    const cacheKey = getCacheKey(lat, lon);
+    const cachedData = cache.sync.get(cacheKey);
+
+    if (cachedData && (Date.now() - cachedData.timestamp < CACHE_DURATION)) {
+        console.log('📡 Serving Sync data from cache:', cacheKey);
+        return res.status(200).json(cachedData.payload);
+    }
 
     try {
         // 1. Fetch from Open-Meteo Weather & Air Quality
@@ -98,12 +118,23 @@ app.post('/api/aqi/sync', async (req, res) => {
             }
         };
 
+        // Update Cache
+        cache.sync.set(cacheKey, {
+            payload: responsePayload,
+            timestamp: Date.now()
+        });
+
         res.status(201).json(responsePayload);
 
     } catch (error) {
         console.error('Tele-Sync Error:', error.message);
         if (error.response) {
             console.error('API Response Error:', error.response.data);
+            // If it's a rate limit error and we have ANY cache (even expired), return it
+            if (error.response.status === 429 && cachedData) {
+                console.warn('Rate limit hit. Responding with stale cache.');
+                return res.status(200).json(cachedData.payload);
+            }
         }
         res.status(500).json({ error: 'Atmospheric link failed. Retrying...' });
     }
@@ -127,6 +158,11 @@ app.get('/api/aqi/history', async (req, res) => {
 });
 
 app.get('/api/aqi/snapshots', async (req, res) => {
+    if (cache.snapshots.data && (Date.now() - cache.snapshots.timestamp < CACHE_DURATION)) {
+        console.log('📡 Serving Snapshots from cache');
+        return res.json(cache.snapshots.data);
+    }
+
     const cities = [
         { name: 'London', lat: 51.5074, lon: -0.1278 },
         { name: 'New York', lat: 40.7128, lon: -74.0060 },
@@ -144,8 +180,17 @@ app.get('/api/aqi/snapshots', async (req, res) => {
                 lon: city.lon
             };
         }));
+
+        cache.snapshots.data = snapshots;
+        cache.snapshots.timestamp = Date.now();
+
         res.json(snapshots);
     } catch (error) {
+        console.error('Snapshot Retrieval Error:', error.message);
+        if (cache.snapshots.data) {
+            console.warn('Using stale snapshots due to error.');
+            return res.json(cache.snapshots.data);
+        }
         res.status(500).json({ error: 'Snapshot Retrieval Error' });
     }
 });
