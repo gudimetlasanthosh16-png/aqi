@@ -1,47 +1,39 @@
-# BreatheSmart – Personal Air Exposure Tracker
+# AirSense - Real-Time Zero-Config AQI Dashboard
 
-BreatheSmart is a premium web application that helps you understand your personal exposure to air pollution. It calculates individual risk based on real-time AQI data and your outdoor activity duration.
+AirSense is a production-ready Web application designed to monitor real-time Air Quality Index (AQI) data. It works **instantly without any API keys**, automatically detecting your location and providing deep atmospheric insights.
 
-## Features
-- **City Search**: Fetch real-time AQI data for any city globally.
-- **Exposure Calculation**: `Exposure Score = AQI × Hours Outside`.
-- **Risk Assessment**: Visual indicators for Low, Medium, and High risk.
-- **Health Tips**: Actionable advice based on current air quality.
-- **Premium UI**: Glassmorphic design with smooth animations.
+## 🌟 Zero-Config Features
+- **Key-Free Operation**: Uses Open-Meteo for real-time Air Quality and Weather data. No signups required.
+- **Smart Geocoding**: Search for any city globally using the integrated free geocoding engine.
+- **Auto-Sync**: Automatically detects your street-level location via Browser GPS.
+- **Historical Hive**: Stores all local trends in MongoDB for long-term monitoring.
 
-## Getting Started
+## 🛠️ Tech Stack
+- **Frontend**: React.js, Chart.js, Framer Motion, Lucide React.
+- **Backend**: Node.js, Express, MongoDB.
+- **APIs**: Open-Meteo (Weather & Air Quality), Geocoding API.
 
-### Prerequisites
-- Node.js installed.
-- OpenWeather API Key (Free tier).
+## 📦 Quick Start
 
-### Setup
-1. Clone the repository or download the files.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. **Important**: Add your OpenWeather API Key in `src/App.jsx`:
-   ```javascript
-   const API_KEY = "YOUR_API_KEY_HERE";
-   ```
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
+### 1. Prerequisites
+- [Node.js](https://nodejs.org/) installed.
+- [MongoDB](https://www.mongodb.com/) running locally on `port 27017`.
 
-## Technical Stack
-- **Frontend**: React (Vite)
-- **Icons**: Lucide React
-- **Animations**: Framer Motion
-- **Styling**: Vanilla CSS (Modern CSS Variables & Glassmorphism)
-- **Data Source**: OpenWeather Air Pollution API
-
-## Calculation Logic
-The app uses the following formula to determine your personal exposure:
+### 2. Run
+```bash
+npm install
+npm start
 ```
-Exposure Score = AQI Value (1-5) × Hours spent outside
-```
-- **Low Risk (0-10)**: Generally safe.
-- **Medium Risk (11-30)**: Use caution for sensitive groups.
-- **High Risk (>30)**: Avoid prolonged exposure.
+
+### 3. Usage
+- On launch, the app will request location permission to show your local AQI.
+- Use the **Search Bar** at the top to check the air quality of any city in the world.
+- Navigate to **Telemetry** or **Analytics** for deep data visualization.
+
+## 📁 Project Structure
+- `/server`: Node.js backend with MongoDB models.
+- `/src/hooks`: Custom data management hooks.
+- `/src/components/Charts`: Integrated Chart.js visualizations.
+
+---
+Built for speed. Zero keys. Pure performance.
