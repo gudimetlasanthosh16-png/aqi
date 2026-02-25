@@ -195,6 +195,10 @@ app.get('/api/aqi/snapshots', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 AirSense Core Syncing on Port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 AirSense Core Syncing on Port ${PORT}`);
+    });
+}
+
+export default app;

@@ -1008,8 +1008,9 @@ body {
   }
 
   .page-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
     text-align: center;
+    margin-bottom: 1.5rem;
   }
 
   .ai-trigger {
@@ -1027,11 +1028,11 @@ body {
   }
 
   .cinematic-overlay .focus-content h2 {
-    font-size: 2rem !important;
+    font-size: 1.8rem !important;
   }
 
   .cinematic-overlay .focus-content h1 {
-    font-size: 5rem !important;
+    font-size: 4rem !important;
   }
 
   .close-btn {
@@ -1040,30 +1041,56 @@ body {
   }
 
   .close-btn svg {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
   }
 }
 
 @media (max-width: 480px) {
   .metrics-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .aqi-main-display .aqi-val {
-    font-size: 6rem;
+    font-size: 3.5rem !important;
+  }
+
+  .aqi-circle {
+    width: 150px;
+    height: 150px;
+  }
+
+  .aqi-value-box .value {
+    font-size: 3rem !important;
   }
 
   .card {
-    padding: 1.25rem;
+    padding: 1rem;
   }
 
   .major-telemetry {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .chart-container {
-    height: 180px;
+    height: 160px;
+  }
+
+  .aqi-status-text h1 {
+    font-size: 1.8rem !important;
+  }
+
+  .nav-links {
+    gap: 0.25rem;
+  }
+
+  .side-link {
+    padding: 0.5rem;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
   }
 }
 
