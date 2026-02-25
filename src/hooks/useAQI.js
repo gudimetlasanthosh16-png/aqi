@@ -14,21 +14,41 @@ export const useAQI = () => {
 
     // Use a ref to store current coords to avoid effect loops
     const currentLocRef = useRef(null);
+    const dataRef = useRef(data);
+
+    // Keep dataRef in sync
+    useEffect(() => {
+        dataRef.current = data;
+    }, [data]);
 
     const fetchAQI = useCallback(async (lat, lon, locationName = 'Current Location') => {
+        let finalLocationName = locationName;
+
+        // If it's a generic name, try to get the real city name
+        if (locationName === 'Current Location') {
+            try {
+                const geoRes = await axios.get(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+                if (geoRes.data && (geoRes.data.city || geoRes.data.locality)) {
+                    finalLocationName = geoRes.data.city || geoRes.data.locality;
+                }
+            } catch (e) {
+                console.warn("Reverse geocode failed, using default name.");
+            }
+        }
+
         try {
             setLoading(true);
             setError(null);
 
             console.log(`Syncing: ${API_BASE_URL}/aqi/sync | Snapshotting: ${API_BASE_URL}/aqi/snapshots`);
             const [syncRes, snapshotsRes] = await Promise.all([
-                axios.post(`${API_BASE_URL}/aqi/sync`, { lat, lon, locationName }, { timeout: 10000 }),
+                axios.post(`${API_BASE_URL}/aqi/sync`, { lat, lon, locationName: finalLocationName }, { timeout: 10000 }),
                 axios.get(`${API_BASE_URL}/aqi/snapshots`, { timeout: 5000 })
             ]);
 
             setData(syncRes.data);
             setSnapshots(snapshotsRes.data);
-            currentLocRef.current = { lat, lon, name: locationName };
+            currentLocRef.current = { lat, lon, name: finalLocationName };
 
             const historyRes = await axios.get(`${API_BASE_URL}/aqi/history`, {
                 params: { lat, lon },
@@ -40,7 +60,8 @@ export const useAQI = () => {
             console.error('Core Link Failure:', err.message);
             setError('Neural link disconnected. Retrying sync protocol...');
 
-            if (!data.consolidated || data.consolidated.locationName.includes('Demo')) {
+            const currentData = dataRef.current;
+            if (!currentData.consolidated || currentData.consolidated.locationName.includes('Demo')) {
                 const randomVariance = (Math.random() * 5).toFixed(1);
                 setData({
                     consolidated: {
@@ -71,7 +92,7 @@ export const useAQI = () => {
         } finally {
             setLoading(false);
         }
-    }, [data.consolidated]);
+    }, []);
 
     const initLocation = useCallback(() => {
         if ("geolocation" in navigator) {

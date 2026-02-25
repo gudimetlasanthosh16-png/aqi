@@ -25,10 +25,27 @@ const cache = {
 
 const getCacheKey = (lat, lon) => `${Math.round(lat * 100) / 100}_${Math.round(lon * 100) / 100}`;
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/airsense';
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+const MONGODB_URI = process.env.MONGODB_URI;
+let useMemoryStore = false;
+
+if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+        .then(() => console.log('✅ Connected to MongoDB Atlas'))
+        .catch(err => {
+            console.error('❌ MongoDB Connection Error:', err);
+            useMemoryStore = true;
+        });
+} else {
+    console.warn('⚠️ No MONGODB_URI provided. Using in-memory store.');
+    useMemoryStore = true;
+}
+
+// In-memory fallback stores
+const memoryData = [];
+const addToMemory = (entry) => {
+    memoryData.push(entry);
+    if (memoryData.length > 100) memoryData.shift();
+};
 
 app.get('/api/health', (req, res) => res.json({ status: 'active', timestamp: new Date() }));
 app.get('/api/ping', (req, res) => res.send('PONG'));
@@ -57,11 +74,13 @@ app.post('/api/aqi/sync', async (req, res) => {
     }
 
     try {
-        // 1. Fetch from Open-Meteo Weather & Air Quality
+        console.log(`📡 Fetching data for ${locationName} (${lat}, ${lon})...`);
         const [weatherRes, aqiRes] = await Promise.all([
-            axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`, { timeout: 8000 }),
-            axios.get(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,us_aqi`, { timeout: 8000 })
+            axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,precipitation&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`, { timeout: 8000 }),
+            axios.get(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,us_aqi&hourly=us_aqi&timezone=auto`, { timeout: 8000 })
         ]);
+
+        console.log('✅ API calls successful');
 
         const currentWeather = weatherRes.data.current;
         const tempCelsius = currentWeather.temperature_2m;
@@ -69,11 +88,30 @@ app.post('/api/aqi/sync', async (req, res) => {
         const precipitation = currentWeather.precipitation;
         const meteoCurrent = aqiRes.data.current;
 
+        // Calculate Daily Max US AQI from Hourly Data
+        const hourly = aqiRes.data.hourly;
+        const dailyAQI = { time: [], us_aqi_max: [] };
+
+        if (hourly && hourly.time) {
+            const days = {};
+            hourly.time.forEach((t, i) => {
+                const date = t.split('T')[0];
+                if (!days[date]) days[date] = [];
+                days[date].push(hourly.us_aqi[i]);
+            });
+
+            Object.keys(days).forEach(date => {
+                dailyAQI.time.push(date);
+                dailyAQI.us_aqi_max.push(Math.max(...days[date]));
+            });
+            console.log(`📊 Processed 7-day forecast for ${dailyAQI.time.length} days`);
+        }
+
         // Fallback if us_aqi is null (unlikely but safe)
         const rawUsAqi = meteoCurrent.us_aqi || 0;
         const aqiIndex = calculateAQIIndex(rawUsAqi);
 
-        // 2. Optional: OpenWeather Link (Complementary)
+        // ... existing OpenWeather logic ...
         let openWeatherData = null;
         if (API_KEY && API_KEY !== 'your_openweather_api_key_here') {
             try {
@@ -84,7 +122,6 @@ app.post('/api/aqi/sync', async (req, res) => {
             }
         }
 
-        // 3. Create Entry with raw metrics for UI visibility
         const newEntry = new AQIData({
             lat,
             lon,
@@ -103,18 +140,27 @@ app.post('/api/aqi/sync', async (req, res) => {
             precipitation: precipitation
         });
 
-        await newEntry.save();
+        if (!useMemoryStore) {
+            await newEntry.save();
+        } else {
+            addToMemory({ ...newEntry.toObject(), timestamp: new Date() });
+        }
 
-        // Attach raw US AQI for the frontend to show more granularity
         const responsePayload = {
             consolidated: {
                 ...newEntry.toObject(),
-                raw_us_aqi: rawUsAqi
+                raw_us_aqi: rawUsAqi,
+                wind_speed: currentWeather.wind_speed_10m,
+                wind_direction: currentWeather.wind_direction_10m,
+                timestamp: new Date()
             },
             openWeather: openWeatherData,
             openMeteo: {
-                airQuality: meteoCurrent,
-                weather: currentWeather
+                airQuality: {
+                    ...aqiRes.data,
+                    daily: dailyAQI
+                },
+                weather: weatherRes.data
             }
         };
 
@@ -129,8 +175,7 @@ app.post('/api/aqi/sync', async (req, res) => {
     } catch (error) {
         console.error('Tele-Sync Error:', error.message);
         if (error.response) {
-            console.error('API Response Error:', error.response.data);
-            // If it's a rate limit error and we have ANY cache (even expired), return it
+            console.error('API Response Error:', JSON.stringify(error.response.data, null, 2));
             if (error.response.status === 429 && cachedData) {
                 console.warn('Rate limit hit. Responding with stale cache.');
                 return res.status(200).json(cachedData.payload);
@@ -143,15 +188,23 @@ app.post('/api/aqi/sync', async (req, res) => {
 app.get('/api/aqi/history', async (req, res) => {
     const { lat, lon } = req.query;
     try {
-        let query = {};
-        if (lat && lon) {
-            query = {
-                lat: { $gt: parseFloat(lat) - 0.5, $lt: parseFloat(lat) + 0.5 },
-                lon: { $gt: parseFloat(lon) - 0.5, $lt: parseFloat(lon) + 0.5 }
-            };
+        if (!useMemoryStore) {
+            let query = {};
+            if (lat && lon) {
+                query = {
+                    lat: { $gt: parseFloat(lat) - 0.5, $lt: parseFloat(lat) + 0.5 },
+                    lon: { $gt: parseFloat(lon) - 0.5, $lt: parseFloat(lon) + 0.5 }
+                };
+            }
+            const history = await AQIData.find(query).sort({ timestamp: -1 }).limit(40);
+            return res.json(history.reverse());
+        } else {
+            // Memory search
+            const history = memoryData
+                .filter(d => !lat || (Math.abs(d.lat - lat) < 0.5 && Math.abs(d.lon - lon) < 0.5))
+                .slice(-40);
+            return res.json(history);
         }
-        const history = await AQIData.find(query).sort({ timestamp: -1 }).limit(40);
-        res.json(history.reverse());
     } catch (error) {
         res.status(500).json({ error: 'History Retrieval Error' });
     }
@@ -195,10 +248,8 @@ app.get('/api/aqi/snapshots', async (req, res) => {
     }
 });
 
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`🚀 AirSense Core Syncing on Port ${PORT}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`🚀 AirSense Core Syncing on Port ${PORT}`);
+});
 
 export default app;

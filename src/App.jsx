@@ -52,6 +52,9 @@ import { useAQI } from './hooks/useAQI';
 import LineChart from './components/Charts/LineChart';
 import BarChart from './components/Charts/BarChart';
 import PieChart from './components/Charts/PieChart';
+import RadarChart from './components/Charts/RadarChart';
+import WindGauge from './components/Charts/WindGauge';
+import PolarAreaChart from './components/Charts/PolarAreaChart';
 
 import './App.css';
 
@@ -69,22 +72,41 @@ const App = () => {
   const { data, history, snapshots, loading, error, refresh, fetchAQI } = useAQI();
   const [isFocus, setIsFocus] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
-  const handleSearch = async (e) => {
-    if (e.key === 'Enter' && search) {
-      try {
-        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=1&language=en&format=json`);
-        const geoData = await geoRes.json();
-
-        if (geoData.results && geoData.results.length > 0) {
-          const { latitude, longitude, name } = geoData.results[0];
-          fetchAQI(latitude, longitude, name);
-          setSearch("");
+  // Debounced Search Effects
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (search.length > 2) {
+        setIsSearching(true);
+        try {
+          const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=5&language=en&format=json`);
+          const geoData = await geoRes.json();
+          setSearchResults(geoData.results || []);
+        } catch (err) {
+          console.error("Geocoding failed:", err);
+        } finally {
+          setIsSearching(false);
         }
-      } catch (err) {
-        console.error("Geocoding failed:", err);
+      } else {
+        setSearchResults([]);
       }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
+
+  const selectLocation = (loc) => {
+    fetchAQI(loc.latitude, loc.longitude, loc.name);
+    setSearch("");
+    setSearchResults([]);
+  };
+
+  const handleSearchKey = (e) => {
+    if (e.key === 'Enter' && searchResults.length > 0) {
+      selectLocation(searchResults[0]);
     }
   };
 
@@ -95,6 +117,8 @@ const App = () => {
       <div className="app-container">
         <div className="bg-mesh" />
         <div className="bg-grid" />
+        <div className="bg-scanning" />
+        <div className="matrix-overlay" />
 
         <Sidebar />
 
@@ -102,8 +126,12 @@ const App = () => {
           <TopBar
             search={search}
             setSearch={setSearch}
-            handleSearch={handleSearch}
+            handleSearch={handleSearchKey}
+            results={searchResults}
+            isSearching={isSearching}
+            onSelect={selectLocation}
             setIsFocus={() => setIsFocus(true)}
+            locationName={data.consolidated?.locationName}
           />
 
           <div className="page-wrapper">
@@ -124,11 +152,11 @@ const App = () => {
 
             <AnimatePresence mode="wait">
               <Routes>
-                <Route path="/" element={<DashboardView data={data.consolidated} history={history} snapshots={snapshots} onRefresh={refresh} satelliteStatus={!error} />} />
+                <Route path="/" element={<DashboardView data={data.consolidated} history={history} snapshots={snapshots} onRefresh={refresh} satelliteStatus={!error} openMeteo={data.openMeteo} />} />
                 <Route path="/openweather" element={<OpenWeatherView data={data.openWeather} fallback={data.openMeteo} />} />
                 <Route path="/openmeteo" element={<OpenMeteoView data={data.openMeteo} />} />
                 <Route path="/analytics" element={<AnalyticsView data={data.consolidated} history={history} />} />
-                <Route path="/map" element={<MapView />} />
+                <Route path="/map" element={<MapView data={data} fetchAQI={fetchAQI} refresh={refresh} />} />
                 <Route path="/safety" element={<SafetyView aqi={data.consolidated?.aqi || 1} theme={CONFIG.AQI_DATA[data.consolidated?.aqi || 1]} />} />
               </Routes>
             </AnimatePresence>
@@ -164,7 +192,7 @@ const GlobalPulse = ({ snapshots }) => (
   </div>
 );
 
-const DashboardView = ({ data, history, snapshots, onRefresh, satelliteStatus }) => {
+const DashboardView = ({ data, history, snapshots, onRefresh, satelliteStatus, openMeteo }) => {
   const theme = CONFIG.AQI_DATA[data?.aqi || 1];
 
   return (
@@ -174,7 +202,14 @@ const DashboardView = ({ data, history, snapshots, onRefresh, satelliteStatus })
       exit={{ opacity: 0 }}
       className="dashboard-view"
     >
+      <div className="welcome-section">
+        <h2 className="mono section-label">HIVE_INTERFACE_LOADED</h2>
+        <h1 className="text-gradient intro-title">Welcome to BreatheSmart</h1>
+        <p className="intro-subtitle">Precision Atmospheric Intelligence & Orbital Telemetry</p>
+      </div>
+
       <div className="hero-grid">
+        {/* Main AQI Hero */}
         <div className="glass card aqi-hero" style={{ '--accent': theme.color }}>
           <div className="card-glare" />
           <div className="hero-header">
@@ -231,29 +266,58 @@ const DashboardView = ({ data, history, snapshots, onRefresh, satelliteStatus })
               <div className="update-meta">
                 <span className="mono">LAST_SYNC: {new Date().toLocaleTimeString()}</span>
               </div>
-              <div className="metric-pills">
-                <div className="pill"><Database size={14} /> NO2: {data?.pollutants?.no2 || 0}</div>
-                <div className="pill"><Sun size={14} /> O3: {data?.pollutants?.o3 || 0}</div>
-              </div>
             </div>
           </div>
         </div>
 
-        <div className="glass card trend-card">
+        {/* Wind Visualizer */}
+        <div className="glass card wind-card">
+          <WindGauge speed={data?.wind_speed || 12} direction={data?.wind_direction || 45} />
+        </div>
+
+        {/* Composition Radar */}
+        <div className="glass card radar-card">
           <div className="card-header">
-            <h3 className="heading">Atmospheric Pulse</h3>
+            <h3 className="heading">Pollutant Fingerprint</h3>
           </div>
-          <div className="chart-container">
+          <div className="chart-holder-sm">
+            {data?.pollutants && <RadarChart pollutants={data.pollutants} />}
+          </div>
+        </div>
+
+        {/* Atmosphere Pulse Chart */}
+        <div className="glass card trend-card-v2">
+          <div className="card-header">
+            <h3 className="heading">Atmospheric Chronology</h3>
+            <div className="chart-legend">
+              <div className="leg-item"><span className="dot" style={{ background: theme.color }}></span> Current Pulse</div>
+            </div>
+          </div>
+          <div className="chart-container-main">
             <LineChart data={history} color={theme.color} />
           </div>
         </div>
 
+        {/* Pollutant Dominance Polar Area */}
+        <div className="glass card polar-card">
+          <div className="card-header">
+            <h3 className="heading">Atom Distribution Matrix</h3>
+          </div>
+          <div className="chart-holder-sm">
+            {data?.pollutants && <PolarAreaChart pollutants={data.pollutants} />}
+          </div>
+        </div>
+
+        {/* Top-Level Metrics */}
         <div className="metrics-grid">
           <MetricCard icon={<Thermometer />} label="THERMAL" value={data?.temperature || 0} unit="°C" />
           <MetricCard icon={<Droplets />} label="HUMIDITY" value={data?.humidity || 0} unit="%" />
           <MetricCard icon={<Wind />} label="PARTICULATES" value={data?.pollutants?.pm2_5 || 0} unit="µg/m³" />
           <MetricCard icon={<CloudRain />} label="PRECIPITATION" value={data?.precipitation || 0} unit="mm" />
         </div>
+
+        {/* Forecast & Global Snapshots */}
+        <WeeklyAQI dailyData={openMeteo?.airQuality?.daily} />
         <GlobalPulse snapshots={snapshots} />
       </div>
     </motion.div>
@@ -271,13 +335,13 @@ const OpenWeatherView = ({ data, fallback }) => (
         <div className="glass card major-telemetry">
           <span className="label mono">ORBITAL_FALLBACK_LINK_ESTABLISHED</span>
           <div className="fallback-val-group">
-            <span className="val mono">{fallback?.airQuality?.us_aqi || '-'}</span>
+            <span className="val mono">{fallback?.airQuality?.current?.us_aqi || '-'}</span>
             <span className="unit">US-AQI</span>
           </div>
           <p className="fallback-desc">Utilizing secondary orbital sensors due to primary link restrictions.</p>
         </div>
         <div className="glass card sub-metrics">
-          {fallback && Object.entries(fallback.airQuality).filter(([k]) => k !== 'us_aqi').map(([k, v]) => (
+          {fallback?.airQuality?.current && Object.entries(fallback.airQuality.current).filter(([k]) => k !== 'us_aqi').map(([k, v]) => (
             <div key={k} className="sub-item">
               <span className="n mono">{k}</span>
               <span className="v mono">{v}</span>
@@ -317,7 +381,7 @@ const OpenMeteoView = ({ data }) => {
         <h2 className="page-title text-gradient">Met-Neural Analysis</h2>
         <div className="provider-tag">Science Cluster (Global)</div>
       </div>
-      {!data ? (
+      {!data || !data.weather || !data.airQuality ? (
         <div className="glass card error-box">
           <Cpu size={32} className="err-icon" />
           <p>Neural link failed. Establishing retry protocol...</p>
@@ -331,8 +395,8 @@ const OpenMeteoView = ({ data }) => {
                 <div className="pulse-tag">SCANNING</div>
               </div>
               <div className="stat-group">
-                <div className="stat"><Thermometer size={20} /> {data.weather.temperature}°C</div>
-                <div className="stat"><Wind size={20} /> {data.weather.windspeed} km/h</div>
+                <div className="stat"><Thermometer size={20} /> {data.weather.current?.temperature_2m}°C</div>
+                <div className="stat"><Wind size={20} /> {data.weather.current?.wind_speed_10m} km/h</div>
               </div>
 
               <div className="forecast-matrix">
@@ -349,10 +413,10 @@ const OpenMeteoView = ({ data }) => {
             <div className="glass card air-quality-stats">
               <h3>Atom Composition</h3>
               <div className="pollutant-integrity">
-                <IntegrityBar label="PM2.5" val={data.airQuality.pm2_5} max={100} />
-                <IntegrityBar label="PM10" val={data.airQuality.pm10} max={150} />
-                <IntegrityBar label="CO" val={data.airQuality.carbon_monoxide} max={5000} />
-                <IntegrityBar label="NO2" val={data.airQuality.nitrogen_dioxide} max={200} />
+                <IntegrityBar label="PM2.5" val={data.airQuality.current?.pm2_5} max={100} />
+                <IntegrityBar label="PM10" val={data.airQuality.current?.pm10} max={150} />
+                <IntegrityBar label="CO" val={data.airQuality.current?.carbon_monoxide} max={5000} />
+                <IntegrityBar label="NO2" val={data.airQuality.current?.nitrogen_dioxide} max={200} />
               </div>
             </div>
           </div>
@@ -370,6 +434,54 @@ const OpenMeteoView = ({ data }) => {
         </div>
       )}
     </motion.div>
+  );
+};
+
+const WeeklyAQI = ({ dailyData }) => {
+  if (!dailyData || !dailyData.time) return null;
+
+  const calculateLevel = (usAqi) => {
+    if (usAqi <= 50) return 1;
+    if (usAqi <= 100) return 2;
+    if (usAqi <= 150) return 3;
+    if (usAqi <= 200) return 4;
+    return 5;
+  };
+
+  return (
+    <div className="glass card weekly-aqi-card">
+      <div className="card-header">
+        <h3 className="heading">7-Day Atmospheric Forecast</h3>
+      </div>
+      <div className="weekly-forecast-grid">
+        {dailyData.time.map((date, i) => {
+          const aqi = dailyData.us_aqi_max[i];
+          const level = calculateLevel(aqi);
+          const theme = CONFIG.AQI_DATA[level] || CONFIG.AQI_DATA[1];
+          const isToday = i === 0;
+
+          return (
+            <div key={date} className={`forecast-day-node glass ${isToday ? 'today' : ''}`}>
+              <span className="day-name mono">{new Date(date).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}</span>
+              <div className="aqi-meter">
+                <div
+                  className="aqi-fill"
+                  style={{
+                    height: `${Math.min((aqi / 300) * 100, 100)}%`,
+                    backgroundColor: theme.color,
+                    boxShadow: `0 0 15px ${theme.color}`
+                  }}
+                />
+              </div>
+              <div className="aqi-val-box">
+                <span className="val mono">{aqi}</span>
+                <span className="label" style={{ color: theme.color }}>{theme.label.split(' ')[0]}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -425,7 +537,7 @@ const Sidebar = () => (
     <div className="side-top">
       <div className="logo-box">
         <div className="logo-icon"><Zap fill="currentColor" size={24} /></div>
-        <div className="logo-text">AIR<span>SENSE</span></div>
+        <div className="logo-text">BREATHE<span>SMART</span></div>
       </div>
       <div className="nav-links">
         <SideLink to="/" icon={<LayoutDashboard size={20} />} label="Global Center" />
@@ -438,10 +550,16 @@ const Sidebar = () => (
     <div className="side-bottom">
       <SideLink to="/safety" icon={<ShieldCheck size={20} />} label="Protective Protocol" />
       <div className="user-short glass">
-        <div className="avatar"><User size={20} /></div>
+        <div className="avatar-wrapper">
+          <div className="avatar glass"><User size={20} /></div>
+          <div className="status-dot pulsing" />
+        </div>
         <div className="info">
           <p className="name">User_Alpha</p>
-          <p className="rank">Hive Pilot</p>
+          <p className="rank mono">HIVE_PILOT</p>
+        </div>
+        <div className="user-actions">
+          <Settings size={16} className="settings-icon" />
         </div>
       </div>
     </div>
@@ -456,17 +574,53 @@ const SideLink = ({ to, icon, label }) => (
   </NavLink>
 );
 
-const TopBar = ({ search, setSearch, handleSearch, setIsFocus }) => (
+const TopBar = ({ search, setSearch, handleSearch, results, isSearching, onSelect, setIsFocus, locationName }) => (
   <header className="top-bar">
-    <div className="search-wrapper glass">
-      <Search size={20} className="search-icon" />
-      <input
-        placeholder="Synchronize with global location..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        onKeyDown={handleSearch}
-      />
-      <div className="kbd glass">⌘ K</div>
+    <div className="active-location-box glass">
+      <div className="loc-indicator">
+        <div className="dot pulsing" />
+        <span className="mono">ACTIVE_NODE</span>
+      </div>
+      <h3 className="current-location-name">{locationName || 'SYNCHRONIZING...'}</h3>
+    </div>
+
+    <div className="search-container">
+      <div className="search-wrapper glass">
+        <Search size={20} className={`search-icon ${isSearching ? 'pulsing' : ''}`} />
+        <input
+          placeholder="Pulse scan global location..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleSearch}
+        />
+        <div className="kbd glass">⌘ K</div>
+      </div>
+
+      <AnimatePresence>
+        {results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="search-results-dropdown glass"
+          >
+            {results.map((loc) => (
+              <div
+                key={loc.id}
+                className="result-item"
+                onClick={() => onSelect(loc)}
+              >
+                <MapPin size={14} />
+                <div className="res-info">
+                  <span className="res-name">{loc.name}</span>
+                  <span className="res-country">{loc.country}, {loc.admin1}</span>
+                </div>
+                <ChevronRight size={14} className="arrow" />
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     <div className="top-actions">
       <button className="icon-btn glass" onClick={setIsFocus}><Maximize2 size={20} /></button>
@@ -498,8 +652,23 @@ const MapController = ({ lat, lon }) => {
   return null;
 };
 
-const MapView = () => {
-  const { data, fetchAQI, refresh } = useAQI();
+const MapEvents = ({ fetchAQI, setIntercepts }) => {
+  useMapEvents({
+    click(e) {
+      const timestamp = new Date().toLocaleTimeString();
+      fetchAQI(e.latlng.lat, e.latlng.lng, `Lat: ${e.latlng.lat.toFixed(2)}, Lon: ${e.latlng.lng.toFixed(2)}`);
+      setIntercepts(prev => [{
+        id: Date.now(),
+        lat: e.latlng.lat.toFixed(2),
+        lon: e.latlng.lng.toFixed(2),
+        time: timestamp
+      }, ...prev].slice(0, 5));
+    },
+  });
+  return null;
+};
+
+const MapView = ({ data, fetchAQI, refresh }) => {
   const theme = CONFIG.AQI_DATA[data.consolidated?.aqi || 1];
   const [activeLayers, setActiveLayers] = useState({
     labels: true,
@@ -510,24 +679,18 @@ const MapView = () => {
   });
   const [intercepts, setIntercepts] = useState([]);
 
+  const decorativeNodes = React.useMemo(() => {
+    return [...Array(15)].map((_, i) => ({
+      id: `node-${i}`,
+      lat: (Math.random() * 160) - 80,
+      lon: (Math.random() * 300) - 150,
+      color: ['#00f2fe', '#f43f5e', '#10b981', '#f59e0b', '#c084fc'][i % 5],
+      metricLabel: ['TEMP', 'AQI', 'HUM', 'WIND', 'CO2'][i % 5]
+    }));
+  }, []);
+
   const toggleLayer = (layer) => {
     setActiveLayers(prev => ({ ...prev, [layer]: !prev[layer] }));
-  };
-
-  const MapEvents = () => {
-    useMapEvents({
-      click(e) {
-        const timestamp = new Date().toLocaleTimeString();
-        fetchAQI(e.latlng.lat, e.latlng.lng, `Lat: ${e.latlng.lat.toFixed(2)}, Lon: ${e.latlng.lng.toFixed(2)}`);
-        setIntercepts(prev => [{
-          id: Date.now(),
-          lat: e.latlng.lat.toFixed(2),
-          lon: e.latlng.lng.toFixed(2),
-          time: timestamp
-        }, ...prev].slice(0, 5));
-      },
-    });
-    return null;
   };
 
   return (
@@ -582,7 +745,7 @@ const MapView = () => {
             />
           )}
 
-          <MapEvents />
+          <MapEvents fetchAQI={fetchAQI} setIntercepts={setIntercepts} />
           {data.consolidated && <MapController lat={data.consolidated.lat} lon={data.consolidated.lon} />}
 
           {data.consolidated && (
@@ -619,40 +782,32 @@ const MapView = () => {
               </CircleMarker>
 
               {/* Decorative nodes for "World Grid" feel */}
-              {[...Array(15)].map((_, i) => {
-                const randomLat = (Math.random() * 160) - 80;
-                const randomLon = (Math.random() * 300) - 150;
-                const colors = ['#00f2fe', '#f43f5e', '#10b981', '#f59e0b', '#c084fc'];
-                const metricLabels = ['TEMP', 'AQI', 'HUM', 'WIND', 'CO2'];
-                const color = colors[i % colors.length];
-
-                return (
-                  <CircleMarker
-                    key={`node-${i}`}
-                    center={[randomLat, randomLon]}
-                    radius={5}
-                    pathOptions={{
-                      fillColor: color,
-                      color: '#fff',
-                      weight: 1,
-                      fillOpacity: 0.7,
-                    }}
-                  >
-                    <Popup className="aqi-popup">
-                      <div className="popup-inner">
-                        <div className="pop-header">
-                          <Activity size={12} color={color} />
-                          <strong>Global Node {i + 100}</strong>
-                        </div>
-                        <div className="pop-item">
-                          <span className="l">{metricLabels[i % metricLabels.length]} LEVEL</span>
-                          <span className="v" style={{ color }}>{Math.floor(Math.random() * 50) + 10}</span>
-                        </div>
+              {decorativeNodes.map((node) => (
+                <CircleMarker
+                  key={node.id}
+                  center={[node.lat, node.lon]}
+                  radius={5}
+                  pathOptions={{
+                    fillColor: node.color,
+                    color: '#fff',
+                    weight: 1,
+                    fillOpacity: 0.7,
+                  }}
+                >
+                  <Popup className="aqi-popup">
+                    <div className="popup-inner">
+                      <div className="pop-header">
+                        <Activity size={12} color={node.color} />
+                        <strong>Global Node {node.id}</strong>
                       </div>
-                    </Popup>
-                  </CircleMarker>
-                );
-              })}
+                      <div className="pop-item">
+                        <span className="l">{node.metricLabel} LEVEL</span>
+                        <span className="v" style={{ color: node.color }}>{Math.floor(Math.random() * 50) + 10}</span>
+                      </div>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
 
               <Circle
                 center={[data.consolidated.lat, data.consolidated.lon]}
@@ -732,36 +887,56 @@ const SafetyView = ({ aqi, theme }) => {
       <div className="safety-grid">
         <div className="glass card major-tip" style={{ borderColor: currentTheme.color }}>
           <div className="tip-header">
-            <AlertOctagon size={64} color={currentTheme.color} />
+            <div className="hazard-visual">
+              <AlertOctagon size={80} color={currentTheme.color} className="hazard-icon" />
+              <div className="hazard-scan" style={{ background: currentTheme.color }} />
+            </div>
             <div className="tip-title">
-              <span className="l mono">SAFETY_LEVEL_{safetyLevel}</span>
-              <h3 style={{ fontSize: '2.5rem' }}>{currentTheme.label}</h3>
+              <span className="l mono">SAFETY_LEVEL: {safetyLevel}/5</span>
+              <h3 className="text-gradient" style={{ fontSize: '3rem' }}>{currentTheme.label}</h3>
+            </div>
+          </div>
+          <div className="hazard-meter-box">
+            <div className="meter-label mono">ATMOSPHERIC_TOXICITY_INDEX</div>
+            <div className="hazard-meter">
+              {[1, 2, 3, 4, 5].map(step => (
+                <div key={step} className={`meter-step ${step <= safetyLevel ? 'active' : ''}`} style={{ '--step-color': CONFIG.AQI_DATA[step].color }} />
+              ))}
             </div>
           </div>
           <p className="tip-desc">{currentTheme.desc}</p>
           <div className="protocol-box glass">
-            <div className="p-head mono">PROTECTIVE_PROTOCOL</div>
-            <p>{currentTheme.advice}</p>
+            <div className="p-head mono">PROTECTIVE_PROTOCOL_ENFORCED</div>
+            <p className="protocol-text">{currentTheme.advice}</p>
           </div>
         </div>
 
         <div className="glass card health-impact">
-          <h3 className="mono">BIOMETRIC_IMPACT_ANALYSIS</h3>
-          <div className="impact-list">
-            <div className="impact-item">
-              <Activity size={16} />
-              <span>Respiratory resistance increased by {safetyLevel * 5}%</span>
-            </div>
-            <div className="impact-item">
-              <Wind size={16} />
-              <span>Particle filtration requirement: {safetyLevel > 2 ? 'CLASS_N95' : 'NOMINAL'}</span>
-            </div>
+          <h3 className="mono label-sm">BIOMETRIC_IMPACT_ANALYSIS</h3>
+          <div className="impact-grid-v2">
+            <ImpactNode icon={<Activity size={18} />} label="VITAL_CAPACITY" val={`${100 - (safetyLevel * 7)}%`} status="DEGRADING" />
+            <ImpactNode icon={<Wind size={18} />} label="OXYGEN_PURITY" val={`${98 - (safetyLevel * 2)}%`} status="NOMINAL" />
+            <ImpactNode icon={<Thermometer size={18} />} label="THERMAL_STRESS" val="LOW" status="STABLE" />
+            <ImpactNode icon={<Droplets size={18} />} label="H2O_SATURATION" val="OPTIMAL" status="AUTO" />
           </div>
         </div>
       </div>
     </motion.div>
   );
 };
+
+const ImpactNode = ({ icon, label, val, status }) => (
+  <div className="impact-node glass">
+    <div className="i-top">
+      <div className="i-icon">{icon}</div>
+      <span className="i-status mono">{status}</span>
+    </div>
+    <div className="i-main">
+      <span className="i-val mono">{val}</span>
+      <span className="i-label mono">{label}</span>
+    </div>
+  </div>
+);
 
 const CinematicFocus = ({ data, setClose }) => {
   const theme = CONFIG.AQI_DATA[data.aqi] || CONFIG.AQI_DATA[1];
@@ -784,15 +959,31 @@ const BreatheAI = ({ chatOpen, setChatOpen }) => (
     </button>
     <div className="ai-window glass">
       <div className="ai-header">
-        <span className="mono">AI_CO_PILOT_v9</span>
-        <button onClick={() => setChatOpen(false)}><X size={16} /></button>
+        <div className="ai-title">
+          <div className="status-orb" />
+          <span className="mono">HIVE_CO_PILOT_v12.4</span>
+        </div>
+        <button className="close-ai" onClick={() => setChatOpen(false)}><X size={16} /></button>
       </div>
       <div className="ai-body">
-        <div className="bubble bot">Satellite links stable. All metrics reporting within expected parameters. How can I assist?</div>
+        <div className="neural-stream-lines">
+          <div className="stream-line" />
+          <div className="stream-line" />
+          <div className="stream-line" />
+        </div>
+        <div className="bubble bot">
+          <span className="mono whisper">TRANSMISSION_START...</span>
+          Satellite links 14.2 & 9.8 stable. All metrics reporting within expected parameters. How can I assist?
+        </div>
+        <div className="wave-visualizer">
+          {[...Array(12)].map((_, i) => <div key={i} className="wave-bar" style={{ animationDelay: `${i * 0.1}s` }} />)}
+        </div>
       </div>
-      <div className="ai-input">
-        <input placeholder="Query Hive Intelligence..." />
-        <Plus size={18} />
+      <div className="ai-input-wrapper">
+        <div className="ai-input glass">
+          <input placeholder="Query Hive Intelligence..." />
+          <button className="send-btn"><Zap size={18} /></button>
+        </div>
       </div>
     </div>
   </div>
@@ -800,11 +991,33 @@ const BreatheAI = ({ chatOpen, setChatOpen }) => (
 
 const LoadingSequence = () => (
   <div className="loader-screen">
-    <div className="loader-wrap">
-      <div className="loader-ring" />
-      <Cpu size={40} className="cpu-icon" />
+    <div className="loader-bg">
+      <div className="bg-mesh" />
+      <div className="loader-grid" />
     </div>
-    <span className="mono">ESTABLISHING NEURAL LINK...</span>
+
+    <div className="loader-content">
+      <div className="loader-visual">
+        <div className="loader-ring-outer" />
+        <div className="loader-ring-inner" />
+        <div className="loader-core">
+          <Cpu size={60} className="cpu-icon" />
+        </div>
+      </div>
+
+      <div className="loader-text-group">
+        <h1 className="mono loader-title">INITIALIZING BREATHE SMART...</h1>
+        <div className="loader-status-stream">
+          <span className="status-line mono">LINK_STATE: ESTABLISHING...</span>
+          <span className="status-line mono">GEO_RESOLVER: BOOTING...</span>
+          <span className="status-line mono">SATELLITE_ARRAY: READY</span>
+        </div>
+      </div>
+    </div>
+
+    <div className="loader-footer">
+      <span className="mono">VER_1.4.2 // SYSTEM_NOMINAL</span>
+    </div>
   </div>
 );
 
