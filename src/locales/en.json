@@ -1,0 +1,87 @@
+{
+    "nav": {
+        "global_center": "Global Center",
+        "satellite_link": "Satellite Link",
+        "neural_hub": "Neural Hub",
+        "deep_metrics": "Deep Metrics",
+        "world_grid": "World Grid",
+        "protective_protocol": "Protective Protocol"
+    },
+    "dashboard": {
+        "hive_interface": "HIVE_INTERFACE_LOADED",
+        "welcome": "Welcome to BreatheSmart",
+        "subtitle": "Precision Atmospheric Intelligence & Orbital Telemetry",
+        "sync": "REAL-TIME SYNC",
+        "orbital_online": "ORBITAL_LINK_ONLINE",
+        "link_error": "LINK_ERROR",
+        "raw_aqi": "RAW US-AQI",
+        "index_level": "INDEX LEVEL",
+        "safe_action": "SAFE_ACTION",
+        "last_sync": "LAST_SYNC",
+        "pollutant_fingerprint": "Pollutant Fingerprint",
+        "atmospheric_chronology": "Atmospheric Chronology",
+        "atom_distribution": "Atom Distribution Matrix",
+        "forecast": "7-Day Atmospheric Forecast",
+        "waking_sensors": "WAKING_GLOBAL_SENSORS..."
+    },
+    "metrics": {
+        "thermal": "THERMAL",
+        "humidity": "HUMIDITY",
+        "particulates": "PARTICULATES",
+        "precipitation": "PRECIPITATION"
+    },
+    "aqi": {
+        "pristine": {
+            "label": "Pristine Air",
+            "desc": "The atmosphere is in optimal condition. Enjoy the fresh air.",
+            "advice": "Perfect for outdoor exercise."
+        },
+        "moderate": {
+            "label": "Moderate",
+            "desc": "Air quality is acceptable but some pollutants may be present.",
+            "advice": "Sensitive groups should limit exertion."
+        },
+        "unhealthy": {
+            "label": "Unhealthy (S)",
+            "desc": "Slight risk for sensitive individuals. Particulates climbing.",
+            "advice": "Wear a mask if you have asthma."
+        },
+        "poor": {
+            "label": "Poor Quality",
+            "desc": "Atmospheric conditions are degrading. Health risk detected.",
+            "advice": "Avoid prolonged outdoor exposure."
+        },
+        "hazardous": {
+            "label": "Hazardous",
+            "desc": "Severe pollution level. High toxicity risk.",
+            "advice": "Remain indoors with filters active."
+        }
+    },
+    "search": {
+        "placeholder": "Pulse scan global location...",
+        "active_node": "ACTIVE_NODE",
+        "syncing": "SYNCHRONIZING..."
+    },
+    "common": {
+        "force_sync": "Force Sync",
+        "scanning": "SCANNING",
+        "user": "User_Alpha",
+        "rank": "HIVE_PILOT"
+    },
+    "views": {
+        "satellite_telemetry": "Satellite Telemetry",
+        "met_neural_analysis": "Met-Neural Analysis",
+        "forensic_data_analysis": "Forensic Data Analysis",
+        "global_mapping_index": "Global Mapping Index",
+        "atmospheric_safety": "Atmospheric Safety"
+    },
+    "ai": {
+        "greeting": "Satellite links 14.2 & 9.8 stable. All metrics reporting within expected parameters. How can I assist?",
+        "placeholder": "Query Hive Intelligence...",
+        "transmission": "TRANSMISSION_START..."
+    },
+    "loading": {
+        "initializing": "INITIALIZING BREATHE SMART...",
+        "ver": "VER_1.4.2 // SYSTEM_NOMINAL"
+    }
+}

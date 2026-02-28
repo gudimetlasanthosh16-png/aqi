@@ -4,8 +4,19 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import AQIData from './models/AQIData.js';
+import User from './models/User.js';
+import SearchHistory from './models/SearchHistory.js';
+import UserLocation from './models/UserLocation.js';
 
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
+console.log('📡 Env path:', path.join(__dirname, '.env'));
+console.log('📡 MONGODB_URI from env:', process.env.MONGODB_URI ? 'DETECTED' : 'MISSING');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -50,6 +61,28 @@ const addToMemory = (entry) => {
 app.get('/api/health', (req, res) => res.json({ status: 'active', timestamp: new Date() }));
 app.get('/api/ping', (req, res) => res.send('PONG'));
 
+// --- User Registration ---
+app.post('/api/user/register', async (req, res) => {
+    const { name, address, phone, email } = req.body;
+    if (!name || !address || !phone || !email) {
+        return res.status(400).json({ error: 'All fields required' });
+    }
+
+    try {
+        const newUser = new User({ name, address, phone, email });
+        if (!useMemoryStore) {
+            await newUser.save();
+        } else {
+            // Memory storage for demo/if mongo fails
+            console.log('User registered in memory for demo session.');
+        }
+        res.status(201).json({ message: 'Registration successful', name });
+    } catch (e) {
+        console.error('Registration error:', e);
+        res.status(500).json({ error: 'Atmospheric link failed for registration.' });
+    }
+});
+
 // --- Enhanced AQI Mapping Logic ---
 const calculateAQIIndex = (usAqi) => {
     if (usAqi <= 50) return 1;       // Good
@@ -60,7 +93,7 @@ const calculateAQIIndex = (usAqi) => {
 };
 
 app.post('/api/aqi/sync', async (req, res) => {
-    const { lat, lon, locationName } = req.body;
+    const { lat, lon, locationName, email } = req.body;
     const API_KEY = process.env.OPENWEATHER_API_KEY;
 
     if (!lat || !lon) return res.status(400).json({ error: 'Lat/Lon required' });
@@ -142,6 +175,36 @@ app.post('/api/aqi/sync', async (req, res) => {
 
         if (!useMemoryStore) {
             await newEntry.save();
+            // Record search history - only unique names per session ideally, but for now just the latest 5
+            await SearchHistory.findOneAndUpdate(
+                { locationName: newEntry.locationName },
+                {
+                    aqi: aqiIndex,
+                    temperature: tempCelsius,
+                    humidity: humidity,
+                    lat,
+                    lon,
+                    timestamp: new Date()
+                },
+                { upsert: true, new: true }
+            );
+
+            // Record registered User's current location details separately
+            if (email) {
+                await UserLocation.findOneAndUpdate(
+                    { email: email },
+                    {
+                        locationName: newEntry.locationName,
+                        aqi: aqiIndex,
+                        temperature: tempCelsius,
+                        humidity: humidity,
+                        lat,
+                        lon,
+                        timestamp: new Date()
+                    },
+                    { upsert: true, new: true }
+                );
+            }
         } else {
             addToMemory({ ...newEntry.toObject(), timestamp: new Date() });
         }
@@ -245,6 +308,42 @@ app.get('/api/aqi/snapshots', async (req, res) => {
             return res.json(cache.snapshots.data);
         }
         res.status(500).json({ error: 'Snapshot Retrieval Error' });
+    }
+});
+
+app.get('/api/search/recent', async (req, res) => {
+    try {
+        if (!useMemoryStore) {
+            const recent = await SearchHistory.find().sort({ timestamp: -1 }).limit(5);
+            res.json(recent);
+        } else {
+            // Fallback for memory store (partial logic)
+            res.json(memoryData.slice(-5).map(d => ({
+                locationName: d.locationName,
+                aqi: d.aqi,
+                temperature: d.temperature,
+                humidity: d.humidity,
+                lat: d.lat,
+                lon: d.lon
+            })));
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Search History Retrieval Error' });
+    }
+});
+
+app.get('/api/user/current-location', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    try {
+        if (!useMemoryStore) {
+            const loc = await UserLocation.findOne({ email });
+            res.json(loc || { message: 'No location data found' });
+        } else {
+            res.json({ message: 'Memory store in use' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'User Location Retrieval Error' });
     }
 });
 

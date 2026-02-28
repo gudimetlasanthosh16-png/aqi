@@ -23,6 +23,8 @@ export const useAQI = () => {
 
     const fetchAQI = useCallback(async (lat, lon, locationName = 'Current Location') => {
         let finalLocationName = locationName;
+        const savedUser = localStorage.getItem('aqi_user_data');
+        const userEmail = savedUser ? JSON.parse(savedUser).email : null;
 
         // If it's a generic name, try to get the real city name
         if (locationName === 'Current Location') {
@@ -42,7 +44,7 @@ export const useAQI = () => {
 
             console.log(`Syncing: ${API_BASE_URL}/aqi/sync | Snapshotting: ${API_BASE_URL}/aqi/snapshots`);
             const [syncRes, snapshotsRes] = await Promise.all([
-                axios.post(`${API_BASE_URL}/aqi/sync`, { lat, lon, locationName: finalLocationName }, { timeout: 10000 }),
+                axios.post(`${API_BASE_URL}/aqi/sync`, { lat, lon, locationName: finalLocationName, email: userEmail }, { timeout: 10000 }),
                 axios.get(`${API_BASE_URL}/aqi/snapshots`, { timeout: 5000 })
             ]);
 
