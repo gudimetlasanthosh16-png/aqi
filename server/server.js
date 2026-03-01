@@ -145,15 +145,20 @@ app.post('/api/aqi/sync', async (req, res) => {
         const aqiIndex = calculateAQIIndex(rawUsAqi);
 
         // ... existing OpenWeather logic ...
-        let openWeatherData = null;
-        if (API_KEY && API_KEY !== 'your_openweather_api_key_here') {
+        // --- Ambient Weather Integration ---
+        let ambientData = null;
+        const AMBIENT_APP_KEY = process.env.AMBIENT_APP_KEY || 'fca9014c5afa40e4b3764444715187569ce70c0f7a31471889c8d059bf6c2514';
+
+        if (AMBIENT_APP_KEY) {
             try {
-                const owRes = await axios.get(`http://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`, { timeout: 3000 });
-                openWeatherData = owRes.data.list[0];
+                // Ambient Weather requires both an API Key and an App Key for personalized data.
+                // For now, we utilize the App Key provided to prepare the connection.
+                console.log('📡 Ambient Weather link standby...');
             } catch (e) {
-                console.warn('OpenWeather skipped.');
+                console.warn('Ambient Weather skipped.');
             }
         }
+
 
         const newEntry = new AQIData({
             lat,
@@ -217,7 +222,7 @@ app.post('/api/aqi/sync', async (req, res) => {
                 wind_direction: currentWeather.wind_direction_10m,
                 timestamp: new Date()
             },
-            openWeather: openWeatherData,
+            ambient: ambientData,
             openMeteo: {
                 airQuality: {
                     ...aqiRes.data,
