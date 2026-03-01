@@ -362,7 +362,7 @@ if (process.env.NODE_ENV === 'production') {
         next();
     });
 } else {
-    app.get('/', (req, res) => res.send('🚀 AirSense API is active'));
+    app.get('/', (req, res) => res.send('🚀 AirSense API is fully active.'));
 }
 
 const server = app.listen(PORT, () => {
