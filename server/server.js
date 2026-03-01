@@ -355,8 +355,11 @@ app.get('/api/user/current-location', async (req, res) => {
 // --- Serve Frontend for Production ---
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../dist')));
-    app.get('/:splat*', (req, res) => {
-        res.sendFile(path.resolve(__dirname, '../', 'dist', 'index.html'));
+    app.use((req, res, next) => {
+        if (!req.path.startsWith('/api')) {
+            return res.sendFile(path.resolve(__dirname, '../', 'dist', 'index.html'));
+        }
+        next();
     });
 } else {
     app.get('/', (req, res) => res.send('🚀 AirSense API is active'));
