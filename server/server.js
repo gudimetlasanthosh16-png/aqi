@@ -347,8 +347,19 @@ app.get('/api/user/current-location', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 AirSense Core Syncing on Port ${PORT}`);
+// --- Serve Frontend for Production ---
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../dist')));
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, '../', 'dist', 'index.html'));
+    });
+} else {
+    app.get('/', (req, res) => res.send('🚀 AirSense API is active'));
+}
+
+const server = app.listen(PORT, () => {
+    console.log(`🚀 AirSense Core Syncing on Port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
-export default app;
+export default server;
+

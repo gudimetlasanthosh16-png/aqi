@@ -9,7 +9,9 @@
     "start": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "render-build": "npm install && npm run build",
+    "render-start": "NODE_ENV=production node server/server.js"
   },
   "dependencies": {
     "axios": "^1.13.5",
@@ -43,5 +45,8 @@
     "globals": "^16.5.0",
     "nodemon": "^3.1.14",
     "vite": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
