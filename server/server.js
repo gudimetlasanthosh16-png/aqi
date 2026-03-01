@@ -352,18 +352,18 @@ app.get('/api/user/current-location', async (req, res) => {
     }
 });
 
-// --- Serve Frontend for Production ---
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../dist')));
-    app.use((req, res, next) => {
-        if (!req.path.startsWith('/api')) {
-            return res.sendFile(path.resolve(__dirname, '../', 'dist', 'index.html'));
-        }
-        next();
-    });
-} else {
-    app.get('/', (req, res) => res.send('🚀 AirSense API is fully active.'));
-}
+// --- Production API Handling ---
+// Note: Frontend is served by Vercel. This server acts as the API only.
+app.get('/', (req, res) => res.json({
+    message: '🚀 AirSense API is fully active.',
+    environment: process.env.NODE_ENV,
+    database: useMemoryStore ? 'Memory' : 'MongoDB'
+}));
+
+// Fallback for unidentified API routes
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: `API route ${req.method} ${req.path} not found.` });
+});
 
 const server = app.listen(PORT, () => {
     console.log(`🚀 AirSense Core Syncing on Port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
